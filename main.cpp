@@ -1,5 +1,8 @@
 #include <iostream>
 #include <fstream>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
+#include <fmt/color.h>
 
 
 namespace elf
@@ -9,8 +12,7 @@ namespace elf
     using u32 = uint32_t;
     using u64 = uint64_t;
 
-
-    namespace hdr
+    namespace ehdr
     {
         // ELF header identification bytes entries offsets.
         static constexpr u8 ELF_IDENT_SIZE         = 16;
@@ -136,43 +138,36 @@ namespace elf
         template<typename WordSize>
         void output_hdr_structure(const hdr_info<WordSize>& header)
         {
-            std::cout << "ELF header ---------------------------------------\n";
-            std::cout << "|              Identification Fields\n";
-            std::cout << "| Raw:        " << std::hex;
+            fmt::print("┌ ELF Header ───────────────────────────────────────┐\n");
+            fmt::print("│              Identification Fields\n");
+            fmt::print("│ Raw:         {:02x}\n", fmt::join(header.ident_bytes, " "));
 
-            for (const u8 byte : header.ident_bytes) std::cout << +byte << ' ';
+            if      (header.ident_bytes[EHDR_OFFSET_CLASS] == FMT32BIT)   fmt::print("│ Format:      32 bits (0x1)\n");
+            else if (header.ident_bytes[EHDR_OFFSET_CLASS] == FMT64BIT)   fmt::print("│ Format:      64 bits (0x2)\n");
 
-            std::cout << '\n';
+            if      (header.ident_bytes[EHDR_OFFSET_DATA] == ELFDATA2LSB) fmt::print("│ Endianness:  Little Endian (0x1)\n");
+            else if (header.ident_bytes[EHDR_OFFSET_DATA] == ELFDATA2MSB) fmt::print("│ Endianness:  Big Endian (0x2)\n");
+            else throw std::runtime_error(fmt::format("Endianness, expected 0x1 or 0x2 but got {:#x}", header.ident_bytes[EHDR_OFFSET_DATA]));
 
-            if      (header.ident_bytes[EHDR_OFFSET_CLASS] == FMT32BIT) std::cout << "| Format:      32 bits (0x1)";
-            else if (header.ident_bytes[EHDR_OFFSET_CLASS] == FMT64BIT) std::cout << "| Format:      64 bits (0x2)";
-            else std::cout << "| Format: Invalid value 0x" << +header.ident_bytes[EHDR_OFFSET_CLASS];
+            fmt::print("│ ELF Version: {}\n", header.ident_bytes[EHDR_OFFSET_VERSION]);
+            fmt::print("│ OS/ABI:      {}\n", os_abi_str_from_u8(header.ident_bytes[EHDR_OFFSET_OS_ABI]));
+            fmt::print("│ ABI Version: {}\n", header.ident_bytes[EHDR_OFFSET_ABIVERSION]);
 
-            std::cout << "|\n";
-
-            if      (header.ident_bytes[EHDR_OFFSET_DATA] == ELFDATA2LSB) std::cout << "| Endianness:  Little Endian (0x1)\n";
-            else if (header.ident_bytes[EHDR_OFFSET_DATA] == ELFDATA2MSB) std::cout << "| Endianness:  Big Endian (0x2)\n";
-            else std::cout << "Endianness: Invalid value 0x" << +header.ident_bytes[EHDR_OFFSET_DATA] << '\n';
-
-            std::cout << "| ELF Version: 0x" << +header.ident_bytes[EHDR_OFFSET_VERSION]                   << '\n';
-            std::cout << "| OS/ABI:      "   << os_abi_str_from_u8(header.ident_bytes[EHDR_OFFSET_OS_ABI]) << '\n';
-            std::cout << "| ABI Version: 0x" << +header.ident_bytes[EHDR_OFFSET_ABIVERSION]                << '\n';
-
-            std::cout << "|\n|                  Other Fields\n";
-            std::cout << "| File Type:                   "   << elf_type_str_from_file_t(header.type) << '\n';
-            std::cout << "| Machine:                     "   << target_str_from_u16(header.target)    << '\n';
-            std::cout << "| ELF File Version:            0x" << header.version                        << '\n';
-            std::cout << "| Entry Point Address:         0x" << header.entry                          << '\n';
-            std::cout << "| Program Header Table Offset: 0x" << header.phdr_offset                    << '\n';
-            std::cout << "| Section Header Table Offset: 0x" << header.shdr_offset                    << '\n';
-            std::cout << "| Flags:                       0x" << header.unused_flags                   << '\n';
-            std::cout << "| ELF Header Size:             "   << std::dec << header.ehdr_size          << '\n';
-            std::cout << "| Program Header Entry Size:   "   << header.phdr_entry_size                << '\n';
-            std::cout << "| Program Header Amount:       "   << header.phdr_amount                    << '\n';
-            std::cout << "| Section Header Entry Size:   "   << header.shdr_entry_size                << '\n';
-            std::cout << "| Section Header Amount:       "   << header.shdr_amount                    << '\n';
-            std::cout << "| Section Header Name Index:   "   << header.shdr_str_index                 << '\n';
-            std::cout << "-------------------------------------------------\n";
+            fmt::print("│\n│                  Other Fields\n");
+            fmt::print("│ File Type:                   {}\n",    elf_type_str_from_file_t(header.type));
+            fmt::print("│ Machine:                     {}\n",    target_str_from_u16(header.target));
+            fmt::print("│ ELF File Version:            {:#010x}\n", header.version);
+            fmt::print("│ Entry Point Address:         {:#018x}\n", header.entry);
+            fmt::print("│ Program Header Table Offset: {:#018x}\n", header.phdr_offset);
+            fmt::print("│ Section Header Table Offset: {:#018x}\n", header.shdr_offset);
+            fmt::print("│ Flags:                       {:#010x}\n", header.unused_flags);
+            fmt::print("│ ELF Header Size:             {}\n",    header.ehdr_size);
+            fmt::print("│ Program Header Entry Size:   {}\n",    header.phdr_entry_size);
+            fmt::print("│ Program Header Amount:       {}\n",    header.phdr_amount);
+            fmt::print("│ Section Header Entry Size:   {}\n",    header.shdr_entry_size);
+            fmt::print("│ Section Header Amount:       {}\n",    header.shdr_amount);
+            fmt::print("│ Section Header Name Index:   {}\n",    header.shdr_str_index);
+            fmt::print("└───────────────────────────────────────────────────┘\n");
         }
 
         file_fmt_type read_fmt_type(std::ifstream& elf_stream)
@@ -285,26 +280,28 @@ namespace elf
         }
 
         template<typename PhdrT>
-        void output_phdr64_structure(const PhdrT& phdr, u16 phdr_index)
+        void output_phdr_structure(const PhdrT& phdr, u16 phdr_index)
         {
-            std::cout << std::dec;
-            std::cout << "| ---- Program Header n° " << phdr_index << '\n' << std::hex;
-            std::cout << "| Segment Type: "   << segtype_to_str(phdr.segtype) << " 0x" << phdr.segtype << '\n';
-            std::cout << "| Flags:        "   << flags_to_str(phdr.flags)     << '\n';
-            std::cout << "| Offset:       0x" << phdr.offset            << '\n';
-            std::cout << "| Virt. Addr.:  0x" << phdr.vaddr             << '\n';
-            std::cout << "| Phys. Addr.:  0x" << phdr.paddr             << '\n';
-            std::cout << "| File Size:    0x" << phdr.file_size         << '\n';
-            std::cout << "| Mem. Size:    0x" << phdr.mem_size          << '\n';
-            std::cout << "| Align:        0x" << phdr.align             << "\n";
-            std::cout << "--------------------------------------------------\n";
+            // We are using this function with 64 bits program header but also 32 bits
+            // The problem is that we are using {:#018x} for formatting, meaning that it will ouput
+            // values as 64 bits integer when they are in reality 32 bits
+            fmt::print("┌────────────────── Program Header n°{} ─────────────┐\n", phdr_index);
+            fmt::print("│ Segment Type: {} {:#010x}\n", segtype_to_str(phdr.segtype), phdr.segtype);
+            fmt::print("│ Flags:        {}\n",          flags_to_str(phdr.flags));
+            fmt::print("│ Offset:       {:#018x}\n",    phdr.offset);
+            fmt::print("│ Virt. Addr.:  {:#018x}\n",    phdr.vaddr);
+            fmt::print("│ Phys. Addr.:  {:#018x}\n",    phdr.paddr);
+            fmt::print("│ File Size:    {:#018x}\n",    phdr.file_size);
+            fmt::print("│ Mem. Size:    {:#018x}\n",    phdr.mem_size);
+            fmt::print("│ Align:        {:#018x}\n",    phdr.align);
+            fmt::print("└───────────────────────────────────────────────────┘\n");
         }
 
-        void read_phdrs64(std::ifstream& elf_stream, hdr::hdr64_info& header_info)
+        void read_phdrs64(std::ifstream& elf_stream, ehdr::hdr64_info& header_info)
         {
             phdr64_info curr_phdr {};
 
-            std::cout << "Program headers ----------------------------------\n";
+            fmt::print("\n┌{0:─^51}\n", "  Program Headers Table  ");
 
             for (u16 phdr_index {0u}; phdr_index < header_info.phdr_amount; ++phdr_index)
             {
@@ -313,7 +310,7 @@ namespace elf
                 elf_stream.seekg(current_phdr_offset);
                 elf_stream.read(reinterpret_cast<char *>(&curr_phdr), sizeof(phdr64_info));
 
-                output_phdr64_structure(curr_phdr, phdr_index + 1);
+                output_phdr_structure(curr_phdr, phdr_index + 1);
             }
         }
     }
@@ -321,15 +318,14 @@ namespace elf
 
 void usage(const std::string& program_name)
 {
-    std::cout << "Usage: " << program_name << " <file>\n";
+    fmt::print("Usage: {} <file>\n", program_name);
 }
 
 void usage(const std::string& program_name, const std::string& error)
 {
-    std::cerr << "[ERROR]: " << error << '\n';
+    fmt::print("[ERROR]: {}\n", error);
     usage(program_name);
 }
-
 
 int main(int argc, char** argv)
 {
@@ -343,30 +339,32 @@ int main(int argc, char** argv)
 
     if (!elf_stream)
     {
-        std::cerr << "Couldn't open file\n";
+        fmt::print(stderr, "[ERROR]: Couldn't open file \"{}\"\n", argv[1]);
         return EXIT_FAILURE;
     }
 
-    const elf::hdr::file_fmt_type format = elf::hdr::read_fmt_type(elf_stream);
+    const elf::ehdr::file_fmt_type format = elf::ehdr::read_fmt_type(elf_stream);
 
-    if (format == elf::hdr::FMT32BIT)
+    if (format == elf::ehdr::FMT32BIT)
     {
-        auto elf_header = elf::hdr::read<elf::hdr::hdr32_info>(elf_stream);
 
-    } else if (format == elf::hdr::FMT64BIT)
+    } else if (format == elf::ehdr::FMT64BIT)
     {
         try
         {
-            auto elf_header = elf::hdr::read<elf::hdr::hdr64_info>(elf_stream);
+            auto elf_header = elf::ehdr::read<elf::ehdr::hdr64_info>(elf_stream);
+
+            elf::ehdr::output_hdr_structure(elf_header);
             elf::phdr::read_phdrs64(elf_stream, elf_header);
+
         } catch (const std::runtime_error& error)
         {
-            std::cerr << "[ERROR]: " << error.what() << '\n';
+            fmt::print("[ERROR]: {}", error.what());
             return EXIT_FAILURE;
         }
     } else
     {
-        std::cerr << "[ERROR]: Couldn't read ELF format, expected 32 or 64 bits file format\n";
+        fmt::print("[ERROR]: Couldn't read ELF format, expected 32 or 64 bits file format but got {}\n", format);
         return EXIT_FAILURE;
     }
 
