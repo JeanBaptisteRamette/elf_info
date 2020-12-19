@@ -1,5 +1,5 @@
-#ifndef ELF_INFO_ELF_STRUCTS_HH
-#define ELF_INFO_ELF_STRUCTS_HH
+#ifndef ELF_INFO_ELF_TYPES_HH
+#define ELF_INFO_ELF_TYPES_HH
 
 #include <elf_info/integral_types.hh>
 
@@ -109,6 +109,23 @@ namespace phdr
 
 namespace shdr
 {
+    enum attribute : u32
+    {
+        SHF_WRITE = 0x1,
+        SHF_ALLOC = 0x2,
+        SHF_EXECINSTR = 0x4,
+        SHF_MERGE = 0x10,
+        SHF_STRINGS = 0x20,
+        SHF_INFO_LINK = 0x40,
+        SHF_LINK_ORDER = 0x80,
+        SHF_OS_NONCONFORMING = 0x100,
+        SHF_GROUP = 0x200,
+        SHF_TLS = 0x400,
+        SHF_EXCLUDE = 0x80000000,
+        SHF_MASKOS = 0x0FF00000,
+        SHF_MASKPROC = 0xF0000000,
+    };
+
     // check on www.sco.com/developers/gabi/latest/ch5.epeader.html
     enum shdr_type : u32
     {
@@ -131,6 +148,7 @@ namespace shdr
         SHT_SYMTAB_SHNDX  = 0x12,
         SHT_NUM           = 0x13,
         SHT_LOOS          = 0x60000000,
+        SHT_GNU_HASH      = 0x6FFFFFF6,
         SHT_HIOS          = 0x6FFFFFFF,
         SHT_LOPROC        = 0x70000000,
         SHT_HIPROC        = 0x7FFFFFFF,
@@ -154,4 +172,4 @@ namespace shdr
     };
 }
 
-#endif //ELF_INFO_ELF_STRUCTS_HH
+#endif //ELF_INFO_ELF_TYPES_HH

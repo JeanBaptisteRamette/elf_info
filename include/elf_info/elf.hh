@@ -5,7 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <elf_info/integral_types.hh>
-#include <elf_info/elf_structs.hh>
+#include <elf_info/elf_types.hh>
 
 
 namespace elf
@@ -54,6 +54,7 @@ namespace elf
         return result;
     }
 
+
     template<typename T>
     class elf
     {
@@ -68,7 +69,7 @@ namespace elf
 
     public:
         // make a getter for this member
-        std::ifstream stream;
+        mutable std::ifstream stream;
 
     private:
         ehdr::ehdr_data<T> elf_header;
@@ -79,8 +80,9 @@ namespace elf
         explicit elf(std::ifstream&& estream) : stream(std::move(estream))
         {
             read_ehdr();
-            read_phdr_table();
-            read_shdr_table();
+
+            if (elf_header.phdr_offset) read_phdr_table();
+            if (elf_header.shdr_offset) read_shdr_table();
         }
 
         ~elf() = default;
@@ -110,6 +112,7 @@ namespace elf
             return shdr_table;
         }
 
+    private:
         void
         read_ehdr()
         {
@@ -148,20 +151,49 @@ namespace elf
         void
         read_shdr_table()
         {
-            shdr_table.reserve(elf_header.shdr_amount);
-
             stream.seekg(elf_header.shdr_offset);
 
-            for (u16 sh_index = 0; sh_index < elf_header.shdr_amount; ++sh_index)
+            auto read_entry = [&]() -> void
             {
                 ShdrT curr_shdr {};
                 if (!stream.read(reinterpret_cast<char*>(&curr_shdr), sizeof(ShdrT)))
                     throw std::runtime_error("couldn't read section headers");
 
                 shdr_table.push_back(curr_shdr);
-            }
+            };
+
+            read_entry();
+
+            // SHN_UNDEF check
+            const T sh_entry_num = (!elf_header.shdr_amount) ? shdr_table[0].size : elf_header.shdr_amount;
+            shdr_table.reserve(sh_entry_num);
+
+            for (u16 sh_index = 1; sh_index < sh_entry_num; ++sh_index)
+                read_entry();
         }
     };
+
+    template<typename T>
+    std::string
+    read_section_name(const elf<T>& elf_s,
+                      const shdr::shdr_data<T>& shdr,
+                      const shdr::shdr_data<T>& shdrstr_table)
+    {
+        // Make sure to check the index against SHN_UNDEF, as the table may not be present.
+        // shdrstr_table[shdr.name_offset] -> name of the section
+        // Note that before you attempt to access the name of a section, you should first check
+        // that the section has a name (the offset given by sh_name is not equal to SHN_UNDEF).
+
+        elf_s.stream.seekg(shdrstr_table.offset + shdr.name_offset);
+
+        std::string sect_name;
+
+        char c;
+        while (elf_s.stream.get(c) && c != '\0')
+            sect_name += c;
+
+        return sect_name;
+    }
 }
 
 #endif //ELF_INFO_ELF_HH

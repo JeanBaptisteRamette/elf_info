@@ -20,7 +20,7 @@ help(const char* program_name)
 
 template<typename T>
 void
-output_file_structures(elf::elf<T>& elf_s,
+output_file_structures(const elf::elf<T>& elf_s,
                        bool opt_header,
                        bool opt_program_headers,
                        bool opt_section_headers)
@@ -32,7 +32,7 @@ output_file_structures(elf::elf<T>& elf_s,
         print::output_phdr_table(elf_s);
 
     if (opt_section_headers)
-        print::output_shdr_table(elf_s.get_shdr_table());
+        print::output_shdr_table(elf_s);
 }
 
 int
@@ -93,11 +93,11 @@ main(int argc, char* argv[])
     // TODO: catch errors when creating elf_file
     if (fmt == ehdr::file_fmt_type::FMT64BIT)
     {
-        elf::elf<u64> elf_file(std::move(elf_stream));
+        const elf::elf<u64> elf_file(std::move(elf_stream));
         output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers);
     } else
     {
-        elf::elf<u32> elf_file(std::move(elf_stream));
+        const elf::elf<u32> elf_file(std::move(elf_stream));
         output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers);
     }
 
