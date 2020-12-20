@@ -10,10 +10,11 @@ help(const char* program_name)
     fmt::print("Usage: {} -f <file> <options>\n", program_name);
 
     const std::string options = "Options:\n"
-                                "  -f     ELF file\n"
-                                "  -h     Display file header\n"
-                                "  -l     Display file program headers\n"
-                                "  -s     Display file section headers\n";
+                                "  -f <file>     ELF file\n"
+                                "  -h            Display file header\n"
+                                "  -l            Display file program headers\n"
+                                "  -s            Display file section headers\n"
+                                "  -x <name>     Hexadecimal dump of given section\n";
 
     fmt::print(options);
 }
@@ -23,7 +24,8 @@ void
 output_file_structures(const elf::elf<T>& elf_s,
                        bool opt_header,
                        bool opt_program_headers,
-                       bool opt_section_headers)
+                       bool opt_section_headers,
+                       const std::string& hexdump_section_name)
 {
     if (opt_header)
         print::output_ehdr_structure(elf_s.get_file_header());
@@ -33,6 +35,9 @@ output_file_structures(const elf::elf<T>& elf_s,
 
     if (opt_section_headers)
         print::output_shdr_table(elf_s);
+
+    if (!hexdump_section_name.empty())
+        print::hexdump_section(elf_s, hexdump_section_name);
 }
 
 int
@@ -45,20 +50,22 @@ main(int argc, char* argv[])
     }
 
     std::string file_name;
+    std::string hexdump_section_name;
     bool opt_header {};
     bool opt_program_headers {};
     bool opt_section_headers {};
 
     int c;
-    while ((c = getopt(argc, argv, "hlsf:")) != -1)
+    while ((c = getopt(argc, argv, "hlsx:f:")) != -1)
     {
         switch (c)
         {
-            case 'h': opt_header = true;          break;
-            case 'l': opt_program_headers = true; break;
-            case 's': opt_section_headers = true; break;
-            case 'f': file_name = optarg;         break;
-            default:                              break;
+            case 'h': opt_header = true;             break;
+            case 'l': opt_program_headers = true;    break;
+            case 's': opt_section_headers = true;    break;
+            case 'x': hexdump_section_name = optarg; break;
+            case 'f': file_name = optarg;            break;
+            default:                                 break;
         }
     }
 
@@ -90,15 +97,20 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    // TODO: catch errors when creating elf_file
-    if (fmt == ehdr::file_fmt_type::FMT64BIT)
+    try
     {
-        const elf::elf<u64> elf_file(std::move(elf_stream));
-        output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers);
-    } else
+        if (fmt == ehdr::file_fmt_type::FMT64BIT)
+        {
+            const elf::elf<u64> elf_file(std::move(elf_stream));
+            output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers, hexdump_section_name);
+        } else
+        {
+            const elf::elf<u32> elf_file(std::move(elf_stream));
+            output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers, hexdump_section_name);
+        }
+    } catch (const std::runtime_error& e)
     {
-        const elf::elf<u32> elf_file(std::move(elf_stream));
-        output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers);
+        fmt::print(stderr, e.what());
     }
 
     return EXIT_SUCCESS;

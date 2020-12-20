@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <memory>
 #include <elf_info/integral_types.hh>
 #include <elf_info/elf_types.hh>
 
@@ -68,7 +69,6 @@ namespace elf
         using ShdrT = shdr::shdr_data<T>;
 
     public:
-        // make a getter for this member
         mutable std::ifstream stream;
 
     private:
@@ -179,10 +179,8 @@ namespace elf
                       const shdr::shdr_data<T>& shdr,
                       const shdr::shdr_data<T>& shdrstr_table)
     {
-        // Make sure to check the index against SHN_UNDEF, as the table may not be present.
-        // shdrstr_table[shdr.name_offset] -> name of the section
-        // Note that before you attempt to access the name of a section, you should first check
-        // that the section has a name (the offset given by sh_name is not equal to SHN_UNDEF).
+        if (!shdr.name_offset)
+            return {};
 
         elf_s.stream.seekg(shdrstr_table.offset + shdr.name_offset);
 
@@ -193,6 +191,19 @@ namespace elf
             sect_name += c;
 
         return sect_name;
+    }
+
+    template<typename T>
+    std::unique_ptr<char[]> read_section_content(const elf<T>& elf_s, const shdr::shdr_data<T>& shdr)
+    {
+        elf_s.stream.seekg(shdr.offset);
+
+        std::unique_ptr<char[]> content(new char[shdr.size]);
+
+        if (!elf_s.stream.read(content.get(), shdr.size))
+            return { nullptr };
+
+        return content;
     }
 }
 
