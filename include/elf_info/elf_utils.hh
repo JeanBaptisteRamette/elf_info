@@ -23,7 +23,7 @@ namespace utils
     const char*
     target_to_str(u16 tar_byte);
 
-    const char*
+    std::string_view
     ptype_tostr(phdr::phdr_type type);
 
     std::string
@@ -32,7 +32,7 @@ namespace utils
     std::string
     shdr_flags_tostr(u64 flags);
 
-    const char*
+    std::string
     stype_tostr(shdr::shdr_type type);
 }
 

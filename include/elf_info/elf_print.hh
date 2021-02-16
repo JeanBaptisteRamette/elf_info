@@ -22,7 +22,7 @@ namespace print
         static_assert(std::is_same_v<T, u32> ||
                       std::is_same_v<T, u64>, "Incompatible data type for ELF header");
 
-        const std::string format { "┌ ELF Header ───────────────────────────────────────┐\n"
+        const char* format { "┌ ELF Header ───────────────────────────────────────┐\n"
                                    "│             Identification Fields\n"
                                    "│ Raw:         {:02x}\n"
                                    "│ Format: {} bits\n"
@@ -47,11 +47,14 @@ namespace print
                                    "└───────────────────────────────────────────────────┘\n" };
 
         const auto byte_ord { eheader.ident_bytes[ehdr::OFFSET_DATA] };
-        std::string endianness;
+        const char* endianness;
 
-        if (byte_ord == ehdr::ELFDATA2LSB)      endianness = "Little Endian 2's complement";
-        else if (byte_ord == ehdr::ELFDATA2MSB) endianness = "Big Endian 2's complement";
-        else throw std::runtime_error("unexpected byte order");
+        if (byte_ord == ehdr::ELFDATA2LSB)
+            endianness = "Little Endian 2's complement";
+        else if (byte_ord == ehdr::ELFDATA2MSB)
+            endianness = "Big Endian 2's complement";
+        else
+            throw std::runtime_error("unexpected byte order");
 
         const auto formatted { fmt::format(format, fmt::join(eheader.ident_bytes, " "),
                                                    eheader.ident_bytes[ehdr::OFFSET_CLASS] * 32,
@@ -222,11 +225,11 @@ namespace print
                 // print one line by iteration
                 while (num_bytes)
                 {
-                    int lbytes { (num_bytes > 16 ? 16 : num_bytes) };
+                    T lbytes { (num_bytes > 16 ? 16 : num_bytes) };
 
                     fmt::print("  {:#010x}: ", addr);
 
-                    for (int j { 0 }; j < 16; ++j)
+                    for (auto j { 0u }; j < 16; ++j)
                     {
                         if (j < lbytes)
                             fmt::printf("%2.2x", data[j]);
@@ -237,7 +240,7 @@ namespace print
                             fmt::print(" ");
                     }
 
-                    for (int j { 0 }; j < lbytes; ++j)
+                    for (auto j { 0u }; j < lbytes; ++j)
                     {
                         char byte { data[j] };
                         if (byte >= ' ' && byte < 0x7f) fmt::print("{}", byte);

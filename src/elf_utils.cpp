@@ -62,7 +62,7 @@ namespace utils
         }
     }
 
-    const char*
+    std::string_view
     ptype_tostr(phdr::phdr_type type)
     {
         using namespace phdr;
@@ -138,7 +138,7 @@ namespace utils
         return attr;
     }
 
-    const char*
+    std::string
     stype_tostr(shdr::shdr_type type)
     {
         using namespace shdr;
