@@ -12,7 +12,7 @@ namespace utils
     {
         static_assert(std::is_integral_v<decltype(number)>);
 
-        char digits = 0;
+        char digits { 0 };
         for (;number; number /= 10, digits++);
         return digits;
     }
@@ -23,7 +23,7 @@ namespace utils
     const char*
     target_to_str(u16 tar_byte);
 
-    std::string
+    const char*
     ptype_tostr(phdr::phdr_type type);
 
     std::string
@@ -32,7 +32,7 @@ namespace utils
     std::string
     shdr_flags_tostr(u64 flags);
 
-    std::string
+    const char*
     stype_tostr(shdr::shdr_type type);
 }
 

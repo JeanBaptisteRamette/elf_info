@@ -109,6 +109,9 @@ namespace phdr
 
 namespace shdr
 {
+    constexpr u8 SHN_UNDEF = 0;
+    constexpr u16 SHN_XINDEX = 0xFFFF;
+
     enum attribute : u32
     {
         SHF_WRITE = 0x1,
@@ -126,7 +129,6 @@ namespace shdr
         SHF_MASKPROC = 0xF0000000,
     };
 
-    // check on www.sco.com/developers/gabi/latest/ch5.epeader.html
     enum shdr_type : u32
     {
         SHT_NULL          = 0x0,
@@ -171,5 +173,6 @@ namespace shdr
         SizeType  entry_size;  //size in bytes of each entry
     };
 }
+
 
 #endif //ELF_INFO_ELF_TYPES_HH

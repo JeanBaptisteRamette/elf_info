@@ -9,7 +9,7 @@ help(const char* program_name)
 {
     fmt::print("Usage: {} -f <file> <options>\n", program_name);
 
-    const std::string options = "Options:\n"
+    const char* options = "Options:\n"
                                 "  -f <file>     ELF file\n"
                                 "  -h            Display file header\n"
                                 "  -l            Display file program headers\n"
@@ -25,7 +25,7 @@ output_file_structures(const elf::elf<T>& elf_s,
                        bool opt_header,
                        bool opt_program_headers,
                        bool opt_section_headers,
-                       const std::string& hexdump_section_name)
+                       std::string_view hexdump_section_name)
 {
     if (opt_header)
         print::output_ehdr_structure(elf_s.get_file_header());
@@ -36,8 +36,24 @@ output_file_structures(const elf::elf<T>& elf_s,
     if (opt_section_headers)
         print::output_shdr_table(elf_s);
 
+    /*
+     * value may be an integer corresponding to the name offset
+     * or a string corresponding to the section's name
+     */
     if (!hexdump_section_name.empty())
-        print::hexdump_section(elf_s, hexdump_section_name);
+    {
+        try
+        {
+            u32 name_offset { static_cast<u32>(std::stoul(hexdump_section_name.data())) };
+            print::hexdump_section(elf_s, name_offset);
+        } catch (const std::invalid_argument& error)
+        {
+            print::hexdump_section(elf_s, hexdump_section_name.data());
+        } catch (const std::out_of_range& error)
+        {
+            fmt::print(stderr, "Value too big for a 32 bits integer, invalid section\n");
+        }
+    }
 }
 
 int
@@ -49,8 +65,8 @@ main(int argc, char* argv[])
         return EXIT_SUCCESS;
     }
 
-    std::string file_name;
-    std::string hexdump_section_name;
+    std::string_view file_name;
+    std::string_view hexdump_section_name;
     bool opt_header {};
     bool opt_program_headers {};
     bool opt_section_headers {};
@@ -76,10 +92,10 @@ main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    for (auto index = optind; index < argc; ++index)
+    for (auto index { optind }; index < argc; ++index)
         fmt::print("[WARNING]: Non-option argument {}\n", argv[index]);
 
-    std::ifstream elf_stream(file_name, std::ios::binary | std::ios::in);
+    std::ifstream elf_stream(file_name.data(), std::ios::binary | std::ios::in);
     if (!elf_stream)
     {
         fmt::print(stderr, "[ERROR]: couldn't open file '{}'", file_name);

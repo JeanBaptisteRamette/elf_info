@@ -62,7 +62,8 @@ namespace utils
         }
     }
 
-    std::string ptype_tostr(phdr::phdr_type type)
+    const char*
+    ptype_tostr(phdr::phdr_type type)
     {
         using namespace phdr;
 
@@ -95,8 +96,8 @@ namespace utils
     {
         if (!(flags & 7u)) return "No Flags";
 
-        const u32 pf_msk_os   = 0x0FF00000;
-        const u32 pf_msk_proc = 0xF0000000;
+        const u32 pf_msk_os   { 0x0FF00000 };
+        const u32 pf_msk_proc { 0xF0000000 };
 
         if (flags & pf_msk_os)   return "OS Spec";
         if (flags & pf_msk_proc) return "Proc Spec";
@@ -137,7 +138,7 @@ namespace utils
         return attr;
     }
 
-    std::string
+    const char*
     stype_tostr(shdr::shdr_type type)
     {
         using namespace shdr;

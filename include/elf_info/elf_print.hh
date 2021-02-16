@@ -12,8 +12,8 @@
 
 namespace print
 {
-    constexpr std::string::size_type MAX_SECTION_NAME_LEN = 18;
-    constexpr std::string::size_type MAX_SECTION_TYPE_LEN = 17;
+    constexpr std::string::size_type MAX_SECTION_NAME_LEN { 18 };
+    constexpr std::string::size_type MAX_SECTION_TYPE_LEN { 17 };
 
     template<typename T>
     void
@@ -22,7 +22,7 @@ namespace print
         static_assert(std::is_same_v<T, u32> ||
                       std::is_same_v<T, u64>, "Incompatible data type for ELF header");
 
-        const std::string format = "┌ ELF Header ───────────────────────────────────────┐\n"
+        const std::string format { "┌ ELF Header ───────────────────────────────────────┐\n"
                                    "│             Identification Fields\n"
                                    "│ Raw:         {:02x}\n"
                                    "│ Format: {} bits\n"
@@ -44,16 +44,16 @@ namespace print
                                    "│ Section Header Entry Size:   {}\n"
                                    "│ Section Header Amount:       {}\n"
                                    "│ Section Header Name Index:   {}\n"
-                                   "└───────────────────────────────────────────────────┘\n";
+                                   "└───────────────────────────────────────────────────┘\n" };
 
-        const auto byte_ord = eheader.ident_bytes[ehdr::OFFSET_DATA];
+        const auto byte_ord { eheader.ident_bytes[ehdr::OFFSET_DATA] };
         std::string endianness;
 
         if (byte_ord == ehdr::ELFDATA2LSB)      endianness = "Little Endian 2's complement";
         else if (byte_ord == ehdr::ELFDATA2MSB) endianness = "Big Endian 2's complement";
         else throw std::runtime_error("unexpected byte order");
 
-        const auto formatted = fmt::format(format, fmt::join(eheader.ident_bytes, " "),
+        const auto formatted { fmt::format(format, fmt::join(eheader.ident_bytes, " "),
                                                    eheader.ident_bytes[ehdr::OFFSET_CLASS] * 32,
                                                    endianness,
                                                    eheader.ident_bytes[ehdr::OFFSET_VERSION],
@@ -71,7 +71,7 @@ namespace print
                                                    eheader.phdr_amount,
                                                    eheader.shdr_entry_size,
                                                    eheader.shdr_amount,
-                                                   eheader.shdr_str_index);
+                                                   eheader.shdr_str_index) };
 
         fmt::print(formatted);
     }
@@ -80,13 +80,13 @@ namespace print
     void
     output_phdr_structure(const PhdrT& phdr)
     {
-        auto segstr = utils::ptype_tostr(phdr.segtype);
-        const auto pad_size = 15 - segstr.size();
-        const auto phdr_line_info = fmt::format("{}{:<{}}{:#018x} {:#018x} {:#018x}\n"
+        const auto segstr { utils::ptype_tostr(phdr.segtype) };
+        const auto pad_size { 15 - segstr.size() };
+        const auto phdr_line_info { fmt::format("{}{:<{}}{:#018x} {:#018x} {:#018x}\n"
                                                 "{:<15}{:#018x} {:#018x} {:<9} {:#x}\n",
                                                 segstr, " ", pad_size, phdr.offset, phdr.vaddr, phdr.paddr,
                                                 " ", phdr.file_size, phdr.mem_size,
-                                                utils::phdr_flags_tostr(phdr.flags), phdr.align);
+                                                utils::phdr_flags_tostr(phdr.flags), phdr.align) };
         fmt::print(phdr_line_info);
     }
 
@@ -96,9 +96,9 @@ namespace print
         static_assert(std::is_same_v<T, u32> ||
                       std::is_same_v<T, u64>, "Incompatible data type for ELF");
 
-        const std::string fields = "Program Headers:\n"
+        const char* fields { "Program Headers:\n"
                                    "Type           Offset             Virt. Addr.        Phys. Addr.\n"
-                                   "               File Size          Memory Size        Flags     Align\n";
+                                   "               File Size          Memory Size        Flags     Align\n" };
 
         fmt::print(fields);
 
@@ -108,7 +108,7 @@ namespace print
 
             if (phdr.segtype == phdr::phdr_type::PT_INTERP)
             {
-                const std::string interpreter = elf::read_interp(elf_s.stream, phdr.offset, phdr.file_size);
+                const std::string interpreter { elf::read_interp(elf_s.stream, phdr.offset, phdr.file_size) };
                 fmt::print("↳ [Requesting program interpreter {}]\n", interpreter);
             }
         }
@@ -127,15 +127,15 @@ namespace print
             else str.resize(size, ' ');
         };
 
-        auto type = utils::stype_tostr(sheader.sec_type);
+        auto type { utils::stype_tostr(sheader.sec_type) };
 
         clamp(name, MAX_SECTION_NAME_LEN);
         clamp(type, MAX_SECTION_TYPE_LEN);
 
-        const auto shdr_line_info = fmt::format("[{:{}}]   {}  {}  {:#018x} {:#010x}\n"
+        const auto shdr_line_info { fmt::format("[{:{}}]   {}  {}  {:#018x} {:#010x}\n"
                                                 "       {:#018x}  {:#018x} {} {}       {}       {}\n",
                                                 shdr_index, num_max_width, name, type, sheader.vaddr, sheader.offset,
-                                                sheader.size, sheader.entry_size, utils::shdr_flags_tostr(sheader.flags), sheader.link, sheader.ex_info, sheader.addr_algn);
+                                                sheader.size, sheader.entry_size, utils::shdr_flags_tostr(sheader.flags), sheader.link, sheader.ex_info, sheader.addr_algn) };
 
         fmt::print(shdr_line_info);
     }
@@ -147,80 +147,86 @@ namespace print
         static_assert(std::is_same_v<T, u32> ||
                       std::is_same_v<T, u64>, "Incompatible data type for section header");
 
-        const std::string fields = "Section Headers:\n"
+        const char* fields { "Section Headers:\n"
                                  "[Num.] Name                Type               Address            Offset\n"
-                                 "       Size                Entry Size         Flags       Link    Info    Align\n";
+                                 "       Size                Entry Size         Flags       Link    Info    Align\n" };
 
         fmt::print(fields);
 
-        const auto& shdr_table = elf_s.get_shdr_table();
-        const int num_max_width = utils::digit_count(shdr_table.size());
-        const auto table_size = shdr_table.size();
-        const auto shdrstr_index = elf_s.get_file_header().shdr_str_index;
+        const auto& shdr_table { elf_s.get_shdr_table() };
+        const int num_max_width { utils::digit_count(shdr_table.size()) };
+        const auto table_size { shdr_table.size() };
+        auto shdrstr_index { elf_s.get_file_header().shdr_str_index };
+
+        if (shdrstr_index == shdr::SHN_XINDEX)
+             shdrstr_index = shdr_table[0].link;
 
         if (shdrstr_index > table_size)
+        {
+            fmt::print(stderr, "Could not retrieve the section name string table.\n");
             return;
+        }
 
-        const auto& shdrstr = shdr_table[shdrstr_index];
+        const auto& shdrstr { shdr_table[shdrstr_index] };
 
         for (u16 i = 0; i < table_size; ++i)
         {
-            // TODO: Why do this inside here and not in read_section_name()
-            const auto& shdr = shdr_table[i];
+            const auto& shdr { shdr_table[i] };
+
             std::string section_name;
 
-            // SHN_UNDEF
-            if (shdrstr_index)
-                section_name =  elf::read_section_name(elf_s, shdr, shdrstr);
+            // Handle case where there is no section name string table
+            if (shdrstr_index != shdr::SHN_UNDEF)
+                section_name =  elf::read_section_name(elf_s, shdr.name_offset, shdrstr);
             else
                 section_name = {MAX_SECTION_NAME_LEN, ' '};
 
             output_shdr_structure(section_name, shdr, i, num_max_width);
         }
 
-        const std::string flags_mapping = "Flags:\n"
+        const char* flags_mapping { "Flags:\n"
                                           "W (write), A (alloc), X (execute), M (merge), S (strings), I (info),\n"
-                                          "L (link order), O (extra OS processing required), G (group), T (TLS),"
-                                          "x (unknown), o (OS specific), E (exclude),"
-                                          "l (large), p (processor specific)";
+                                          "L (link order), O (extra OS processing required), G (group), T (TLS),\n"
+                                          "x (unknown), o (OS specific), E (exclude),\n"
+                                          "l (large), p (processor specific)\n" };
 
         fmt::print(flags_mapping);
     }
 
     template<typename T>
     void
-    hexdump_section(const elf::elf<T>& elf_s, const std::string& section_name)
+    hexdump_section(const elf::elf<T>& elf_s, std::string_view section_name)
     {
-        const auto& section_header_table = elf_s.get_shdr_table();
+        const auto& section_header_table { elf_s.get_shdr_table() };
 
-        const u16 shdrstr_section_num = elf_s.get_file_header().shdr_str_index;
+        const u16 shdrstr_index { elf_s.get_file_header().shdr_str_index };
 
-        if (!shdrstr_section_num)
+        if (shdrstr_index == shdr::SHN_UNDEF)
         {
-            // fmt::print("No Section in file");
+            fmt::print("Can not retrieve section '{}' because the file doesn't have a section header string table\n", section_name);
             return;
         }
 
-        auto dump_section = [&](const shdr::shdr_data<T>& shdr)
+        auto dump_section = [&](const shdr::shdr_data<T>& shdr) -> void
         {
             fmt::print("Dump of section '{}':\n\n", section_name);
 
-            std::unique_ptr<char[]> content = elf::read_section_content(elf_s, shdr);
+            std::unique_ptr<char[]> content { elf::read_section_content(elf_s, shdr) };
 
             if (content)
             {
-                char* data = content.get();
-                T addr = shdr.vaddr;
-                T num_bytes = shdr.size;
+                char* data { content.get() };
+                T addr { shdr.vaddr };
+                T num_bytes { shdr.size };
 
                 // print one line by iteration
                 while (num_bytes)
                 {
-                    int lbytes = (num_bytes > 16 ? 16 : num_bytes);
+                    int lbytes { (num_bytes > 16 ? 16 : num_bytes) };
 
                     fmt::print("  {:#010x}: ", addr);
 
-                    for (int j = 0; j < 16; ++j)
+                    for (int j { 0 }; j < 16; ++j)
                     {
                         if (j < lbytes)
                             fmt::printf("%2.2x", data[j]);
@@ -231,9 +237,9 @@ namespace print
                             fmt::print(" ");
                     }
 
-                    for (int j = 0; j < lbytes; ++j)
+                    for (int j { 0 }; j < lbytes; ++j)
                     {
-                        char byte = data[j];
+                        char byte { data[j] };
                         if (byte >= ' ' && byte < 0x7f) fmt::print("{}", byte);
                         else                            fmt::print(".");
                     }
@@ -253,7 +259,7 @@ namespace print
 
         for (const auto& shdr : section_header_table)
         {
-            if (elf::read_section_name(elf_s, shdr, section_header_table[shdrstr_section_num]) == section_name)
+            if (elf::read_section_name(elf_s, shdr.name_offset, section_header_table[shdrstr_index]) == section_name)
             {
                 if (!shdr.size || shdr.sec_type == shdr::SHT_NOBITS)
                 {
@@ -267,6 +273,39 @@ namespace print
         }
 
         fmt::print("Section '{}' was not dumped because it does not exist.\n", section_name);
+    }
+
+    template<typename T>
+    void
+    hexdump_section(const elf::elf<T>& elf_s, u32 sh_name)
+    {
+        const auto& section_header_table { elf_s.get_shdr_table() };
+        const u16 shdrstr_index { elf_s.get_file_header().shdr_str_index };
+
+        if (shdrstr_index == shdr::SHN_UNDEF)
+        {
+            fmt::print("Can not retrieve section from name offset {} because the file doesn't have a section header string table\n", sh_name);
+            return;
+        }
+
+        const std::string section_name { elf::read_section_name(elf_s, sh_name, section_header_table[shdrstr_index]) };
+        hexdump_section(elf_s, section_name);
+    }
+
+    template<typename STEntry>
+    void
+    output_st_entry(const STEntry& sym)
+    {
+
+    }
+
+    template<typename Elf>
+    void
+    output_symtab(const Elf& elf_s)
+    {
+        // get symbol table
+        // get number of entries
+        fmt::print("Symbol table '{}' contains {} entries:\n");
     }
 }
 

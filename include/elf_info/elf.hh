@@ -33,10 +33,10 @@ namespace elf
     std::string
     read_interp(std::ifstream& elf_stream, IntegerSize offset, IntegerSize size)
     {
-        const auto prev_pos = elf_stream.tellg();
+        const auto prev_pos { elf_stream.tellg() };
         elf_stream.seekg(offset);
 
-        char* buffer = nullptr;
+        char* buffer { nullptr };
 
         try
         {
@@ -95,22 +95,13 @@ namespace elf
         elf& operator=(elf&&)      = delete;
 
         const ehdr::ehdr_data<T>&
-        get_file_header() const
-        {
-            return elf_header;
-        }
+        get_file_header() const { return elf_header; }
 
         const std::vector<PhdrT>&
-        get_phdr_table() const
-        {
-            return phdr_table;
-        }
+        get_phdr_table() const { return phdr_table; }
 
         const std::vector<ShdrT>&
-        get_shdr_table() const
-        {
-            return shdr_table;
-        }
+        get_shdr_table() const { return shdr_table; }
 
     private:
         void
@@ -144,7 +135,7 @@ namespace elf
                 if (!stream.read(reinterpret_cast<char*>(&curr_phdr), sizeof(PhdrT)))
                     throw std::runtime_error("couldn't read program headers.");
 
-                phdr_table.push_back(curr_phdr);
+                phdr_table.push_back(std::move(curr_phdr));
             }
         }
 
@@ -159,16 +150,19 @@ namespace elf
                 if (!stream.read(reinterpret_cast<char*>(&curr_shdr), sizeof(ShdrT)))
                     throw std::runtime_error("couldn't read section headers");
 
-                shdr_table.push_back(curr_shdr);
+                shdr_table.push_back(std::move(curr_shdr));
             };
 
+            /*
+             * Read the first section header to handle the special case
+             * where shdr_amount is equal to SHN_UNDEF
+             */
             read_entry();
 
-            // SHN_UNDEF check
-            const T sh_entry_num = (!elf_header.shdr_amount) ? shdr_table[0].size : elf_header.shdr_amount;
+            const T sh_entry_num { (elf_header.shdr_amount == shdr::SHN_UNDEF) ? shdr_table[0].size : elf_header.shdr_amount };
             shdr_table.reserve(sh_entry_num);
 
-            for (u16 sh_index = 1; sh_index < sh_entry_num; ++sh_index)
+            for (u16 sh_index { 1 }; sh_index < sh_entry_num; ++sh_index)
                 read_entry();
         }
     };
@@ -176,13 +170,13 @@ namespace elf
     template<typename T>
     std::string
     read_section_name(const elf<T>& elf_s,
-                      const shdr::shdr_data<T>& shdr,
+                      u32 name_offset,
                       const shdr::shdr_data<T>& shdrstr_table)
     {
-        if (!shdr.name_offset)
+        if (!name_offset)
             return {};
 
-        elf_s.stream.seekg(shdrstr_table.offset + shdr.name_offset);
+        elf_s.stream.seekg(shdrstr_table.offset + name_offset);
 
         std::string sect_name;
 
@@ -196,7 +190,13 @@ namespace elf
     template<typename T>
     std::unique_ptr<char[]> read_section_content(const elf<T>& elf_s, const shdr::shdr_data<T>& shdr)
     {
-        elf_s.stream.seekg(shdr.offset);
+        try
+        {
+            elf_s.stream.seekg(shdr.offset);
+        } catch (const std::ios_base::failure& io_failure)
+        {
+            return { nullptr };
+        }
 
         std::unique_ptr<char[]> content(new char[shdr.size]);
 
