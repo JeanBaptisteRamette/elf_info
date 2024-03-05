@@ -30,22 +30,22 @@ namespace elf
     }
 
 
-    template<typename T>
+    template<typename Bits>
     class elf
     {
-        static_assert(std::is_same_v<T, u32> || std::is_same_v<T, u64>,
+        static_assert(std::is_same_v<Bits, u32> || std::is_same_v<Bits, u64>,
                  "Invalid type for ELF");
 
-        using PhdrT = std::conditional_t<std::is_same_v<T, u64>,
+        using PhdrT = std::conditional_t<std::is_same_v<Bits, u64>,
                                          phdr::phdr64_data,
                                          phdr::phdr32_data>;
 
-        using ShdrT = shdr::shdr_data<T>;
+        using ShdrT = shdr::shdr_data<Bits>;
 
     private:
 		mutable std::ifstream stream;
 
-        ehdr::ehdr_data<T> elf_header;
+        ehdr::ehdr_data<Bits> elf_header;
         std::vector<PhdrT> phdr_table;
         std::vector<ShdrT> shdr_table;
 
@@ -67,7 +67,7 @@ namespace elf
         elf& operator=(const elf&) = delete;
         elf& operator=(elf&&)      = delete;
 
-        const ehdr::ehdr_data<T>&
+        const ehdr::ehdr_data<Bits>&
         get_file_header() const { return elf_header; }
 
         const std::vector<PhdrT>&
@@ -76,9 +76,8 @@ namespace elf
         const std::vector<ShdrT>&
         get_shdr_table() const { return shdr_table; }
 
-		template<typename IntegerSize>
 		std::string
-		read_string(IntegerSize offset, IntegerSize size) const
+		read_string(Bits offset, Bits size) const
 		{
 			const auto prev_pos { stream.tellg() };
 			stream.seekg(offset);
@@ -103,7 +102,7 @@ namespace elf
 		}
 
 		std::string
-		read_section_name(u32 name_offset, const shdr::shdr_data<T>& shdrstr_table) const
+		read_section_name(u32 name_offset, const shdr::shdr_data<Bits>& shdrstr_table) const
 		{
 			if (!name_offset)
 				return {};
@@ -119,7 +118,7 @@ namespace elf
 			return sect_name;
 		}
 
-		std::vector<u8> read_section_content(const shdr::shdr_data<T>& shdr) const
+		std::vector<u8> read_section_content(const shdr::shdr_data<Bits>& shdr) const
 		{
 			try
 			{
@@ -194,13 +193,16 @@ namespace elf
              */
             read_entry();
 
-            const T sh_entry_num { (elf_header.shdr_amount == shdr::SHN_UNDEF) ? shdr_table[0].size : elf_header.shdr_amount };
+            const Bits sh_entry_num {(elf_header.shdr_amount == shdr::SHN_UNDEF) ? shdr_table[0].size : elf_header.shdr_amount };
             shdr_table.reserve(sh_entry_num);
 
             for (u16 sh_index { 1 }; sh_index < sh_entry_num; ++sh_index)
                 read_entry();
         }
     };
+
+	using elf64 = elf<u64>;
+	using elf32 = elf<u32>;
 }
 
 #endif //ELF_INFO_ELF_HH

@@ -109,12 +109,12 @@ main(int argc, char* argv[])
 
 		if (elf_bits_type == ehdr::file_fmt_type::FMT64BIT)
 		{
-		    const elf::elf<u64> elf_file(std::move(elf_stream));
+		    const elf::elf64 elf_file(std::move(elf_stream));
 		    output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers, hexdump_section_name);
 		}
 		else
 		{
-		    const elf::elf<u32> elf_file(std::move(elf_stream));
+		    const elf::elf32 elf_file(std::move(elf_stream));
 		    output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers, hexdump_section_name);
 		}
 	} catch (const std::runtime_error& e)
