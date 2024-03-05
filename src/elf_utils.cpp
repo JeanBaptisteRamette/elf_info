@@ -4,7 +4,7 @@
 
 namespace utils
 {
-    const char*
+    std::string_view
     file_type_to_str(ehdr::file_type type)
     {
         switch (type)
@@ -24,7 +24,7 @@ namespace utils
         }
     }
 
-    const char*
+    std::string_view
     target_to_str(u16 tar_byte)
     {
         switch (tar_byte)

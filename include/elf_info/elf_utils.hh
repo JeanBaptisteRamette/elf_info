@@ -17,10 +17,10 @@ namespace utils
         return digits;
     }
 
-    const char*
+    std::string_view
     file_type_to_str(ehdr::file_type type);
 
-    const char*
+    std::string_view
     target_to_str(u16 tar_byte);
 
     std::string_view
