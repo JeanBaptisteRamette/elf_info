@@ -96,38 +96,32 @@ main(int argc, char* argv[])
         fmt::print("[WARNING]: Non-option argument {}\n", argv[index]);
 
     std::ifstream elf_stream(file_name.data(), std::ios::binary | std::ios::in);
+
     if (!elf_stream)
     {
         fmt::print(stderr, "[ERROR]: couldn't open file '{}'", file_name);
         return EXIT_FAILURE;
     }
 
-    ehdr::file_fmt_type fmt;
+	try
+	{
+		const auto elf_bits_type = elf::get_fmt_type(elf_stream);
 
-    try
-    {
-        fmt = elf::get_fmt_type(elf_stream);
-    } catch (const std::runtime_error& error)
-    {
-        fmt::print(error.what());
-        return EXIT_FAILURE;
-    }
-
-    try
-    {
-        if (fmt == ehdr::file_fmt_type::FMT64BIT)
-        {
-            const elf::elf<u64> elf_file(std::move(elf_stream));
-            output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers, hexdump_section_name);
-        } else
-        {
-            const elf::elf<u32> elf_file(std::move(elf_stream));
-            output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers, hexdump_section_name);
-        }
-    } catch (const std::runtime_error& e)
-    {
-        fmt::print(stderr, e.what());
-    }
+		if (elf_bits_type == ehdr::file_fmt_type::FMT64BIT)
+		{
+		    const elf::elf<u64> elf_file(std::move(elf_stream));
+		    output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers, hexdump_section_name);
+		}
+		else
+		{
+		    const elf::elf<u32> elf_file(std::move(elf_stream));
+		    output_file_structures(elf_file, opt_header, opt_program_headers, opt_section_headers, hexdump_section_name);
+		}
+	} catch (const std::runtime_error& e)
+	{
+		fmt::print(stderr, e.what());
+		return EXIT_FAILURE;
+	}
 
     return EXIT_SUCCESS;
 }
