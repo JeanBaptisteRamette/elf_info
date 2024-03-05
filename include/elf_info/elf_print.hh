@@ -111,8 +111,8 @@ namespace print
 
             if (phdr.segtype == phdr::phdr_type::PT_INTERP)
             {
-                const std::string interpreter { elf::read_interp(elf_s.stream, phdr.offset, phdr.file_size) };
-                fmt::print("↳ [Requesting program interpreter {}]\n", interpreter);
+                const auto interpreter_name { elf_s.read_string(phdr.offset, phdr.file_size) };
+                fmt::print("↳ [Requesting program interpreter {}]\n", interpreter_name);
             }
         }
     }
@@ -180,7 +180,7 @@ namespace print
 
             // Handle case where there is no section name string table
             if (shdrstr_index != shdr::SHN_UNDEF)
-                section_name =  elf::read_section_name(elf_s, shdr.name_offset, shdrstr);
+                section_name =  elf_s.read_section_name(shdr.name_offset, shdrstr);
             else
                 section_name = {MAX_SECTION_NAME_LEN, ' '};
 
@@ -214,11 +214,11 @@ namespace print
         {
             fmt::print("Dump of section '{}':\n\n", section_name);
 
-            std::unique_ptr<char[]> content { elf::read_section_content(elf_s, shdr) };
+            const std::vector<u8> content { elf_s.read_section_content(shdr) };
 
-            if (content)
+            if (!content.empty())
             {
-                char* data { content.get() };
+                const char* data { reinterpret_cast<const char*>(content.data()) };
                 T addr { shdr.vaddr };
                 T num_bytes { shdr.size };
 
@@ -262,7 +262,7 @@ namespace print
 
         for (const auto& shdr : section_header_table)
         {
-            if (elf::read_section_name(elf_s, shdr.name_offset, section_header_table[shdrstr_index]) == section_name)
+            if (elf_s.read_section_name(shdr.name_offset, section_header_table[shdrstr_index]) == section_name)
             {
                 if (!shdr.size || shdr.sec_type == shdr::SHT_NOBITS)
                 {
@@ -291,7 +291,7 @@ namespace print
             return;
         }
 
-        const std::string section_name { elf::read_section_name(elf_s, sh_name, section_header_table[shdrstr_index]) };
+        const std::string section_name { elf_s.read_section_name(sh_name, section_header_table[shdrstr_index]) };
         hexdump_section(elf_s, section_name);
     }
 
@@ -308,7 +308,7 @@ namespace print
     {
         // get symbol table
         // get number of entries
-        fmt::print("Symbol table '{}' contains {} entries:\n");
+        // fmt::print("Symbol table '{}' contains {} entries:\n");
     }
 }
 

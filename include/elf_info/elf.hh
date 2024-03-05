@@ -20,39 +20,13 @@ namespace elf
         if (!estream.get(c))
             throw std::runtime_error("couldn't read format type\n");
 
-        auto format = static_cast<ehdr::file_fmt_type>(c);
+        const auto format = static_cast<ehdr::file_fmt_type>(c);
 
         if (format != ehdr::FMT32BIT && format != ehdr::FMT64BIT)
             throw std::runtime_error("unexpected format type\n");
 
         return format;
 
-    }
-
-    template<typename IntegerSize>
-    std::string
-    read_interp(std::ifstream& elf_stream, IntegerSize offset, IntegerSize size)
-    {
-        const auto prev_pos { elf_stream.tellg() };
-        elf_stream.seekg(offset);
-
-        char* buffer { nullptr };
-
-        try
-        {
-            buffer = new char[size];
-            elf_stream.read(buffer, size);
-            elf_stream.seekg(prev_pos);
-        } catch (const std::bad_alloc& error)
-        {
-            elf_stream.seekg(prev_pos);
-            return {};
-        }
-
-        std::string result(buffer, size);
-        delete[] buffer;
-
-        return result;
     }
 
 
@@ -68,10 +42,9 @@ namespace elf
 
         using ShdrT = shdr::shdr_data<T>;
 
-    public:
-        mutable std::ifstream stream;
-
     private:
+		mutable std::ifstream stream;
+
         ehdr::ehdr_data<T> elf_header;
         std::vector<PhdrT> phdr_table;
         std::vector<ShdrT> shdr_table;
@@ -102,6 +75,68 @@ namespace elf
 
         const std::vector<ShdrT>&
         get_shdr_table() const { return shdr_table; }
+
+		template<typename IntegerSize>
+		std::string
+		read_string(IntegerSize offset, IntegerSize size) const
+		{
+			const auto prev_pos { stream.tellg() };
+			stream.seekg(offset);
+
+			char* buffer { nullptr };
+
+			try
+			{
+				buffer = new char[size];
+				stream.read(buffer, size);
+				stream.seekg(prev_pos);
+			} catch (const std::bad_alloc& error)
+			{
+				stream.seekg(prev_pos);
+				return {};
+			}
+
+			std::string result(buffer, size);
+			delete[] buffer;
+
+			return result;
+		}
+
+		std::string
+		read_section_name(u32 name_offset, const shdr::shdr_data<T>& shdrstr_table) const
+		{
+			if (!name_offset)
+				return {};
+
+			stream.seekg(shdrstr_table.offset + name_offset);
+
+			std::string sect_name;
+
+			char c;
+			while (stream.get(c) && c != '\0')
+				sect_name += c;
+
+			return sect_name;
+		}
+
+		std::vector<u8> read_section_content(const shdr::shdr_data<T>& shdr) const
+		{
+			try
+			{
+				stream.seekg(shdr.offset);
+			} catch (const std::ios_base::failure& io_failure)
+			{
+				return {};
+			}
+
+			std::vector<u8> content;
+			content.reserve(shdr.size);
+
+			if (!stream.read(reinterpret_cast<char*>(content.data()), shdr.size))
+				return {};
+
+			return content;
+		}
 
     private:
         void
@@ -166,45 +201,6 @@ namespace elf
                 read_entry();
         }
     };
-
-    template<typename T>
-    std::string
-    read_section_name(const elf<T>& elf_s,
-                      u32 name_offset,
-                      const shdr::shdr_data<T>& shdrstr_table)
-    {
-        if (!name_offset)
-            return {};
-
-        elf_s.stream.seekg(shdrstr_table.offset + name_offset);
-
-        std::string sect_name;
-
-        char c;
-        while (elf_s.stream.get(c) && c != '\0')
-            sect_name += c;
-
-        return sect_name;
-    }
-
-    template<typename T>
-    std::unique_ptr<char[]> read_section_content(const elf<T>& elf_s, const shdr::shdr_data<T>& shdr)
-    {
-        try
-        {
-            elf_s.stream.seekg(shdr.offset);
-        } catch (const std::ios_base::failure& io_failure)
-        {
-            return { nullptr };
-        }
-
-        std::unique_ptr<char[]> content(new char[shdr.size]);
-
-        if (!elf_s.stream.read(content.get(), shdr.size))
-            return { nullptr };
-
-        return content;
-    }
 }
 
 #endif //ELF_INFO_ELF_HH
